@@ -28,7 +28,7 @@ def parse_ofx(contents, filename):
         for transaction in account.statement.transactions:
             transactions.append({
                 'date': transaction.date,
-                'amount': transaction.amount,
+                'amount': float(transaction.amount),  # Convert to float
                 'description': transaction.memo if transaction.memo else transaction.payee,
                 'type': transaction.type,
                 'category': categorize_transaction(transaction.memo if transaction.memo else transaction.payee)
@@ -40,8 +40,8 @@ def parse_ofx(contents, filename):
         # Add account information
         df['account_id'] = account.account_id
         df['account_type'] = account.account_type
-        df['balance'] = account.statement.balance
-        df['currency'] = account.statement.currency
+        df['balance'] = float(account.statement.balance)  # Convert to float
+        df['currency'] = account.statement.currency if hasattr(account.statement, 'currency') else 'EUR'
         
         return df
     
@@ -63,7 +63,8 @@ def parse_ofc(contents, filename):
     # OFC is similar to OFX, attempt to parse with OFX parser first
     try:
         return parse_ofx(contents, filename)
-    except:
+    except Exception as e:
+        print(f"Error parsing OFC file using OFX parser: {e}")
         # If OFX parser fails, implement custom OFC parsing logic here
         # This is a placeholder - actual implementation would depend on the OFC format
         print("OFC format not fully supported yet")
@@ -83,16 +84,20 @@ def categorize_transaction(description):
     
     # Define category patterns
     categories = {
-        'Courses': ['carrefour', 'lidl', 'aldi', 'monoprix', 'leclerc', 'intermarche', 'super u', 'casino', 'franprix', 'marche', 'epicerie', 'boulangerie', 'alimentation'],
+        'Courses': ['carrefour', 'carreefour', 'lidl', 'aldi', 'monoprix', 'leclerc', 'intermarche', 'super u', 'casino', 'franprix', 'marche', 'epicerie', 'boulangerie', 'alimentation', 'picard'],
         'Restaurants': ['restaurant', 'cafe', 'bar', 'bistrot', 'brasserie', 'uber eats', 'deliveroo', 'just eat', 'frichti', 'traiteur'],
         'Transport': ['uber', 'taxi', 'transport', 'metro', 'ratp', 'sncf', 'bus', 'train', 'essence', 'carburant', 'parking', 'peage', 'autoroute'],
-        'Shopping': ['amazon', 'fnac', 'darty', 'galeries lafayette', 'printemps', 'zara', 'h&m', 'uniqlo', 'decathlon', 'vetement', 'achat'],
-        'Loisirs': ['cinema', 'film', 'theatre', 'billet', 'concert', 'netflix', 'spotify', 'deezy', 'canal+', 'abonnement'],
-        'Sante': ['pharmacie', 'medecin', 'docteur', 'medical', 'sante', 'dentiste', 'hopital', 'mutuelle'],
-        'Services': ['electricite', 'edf', 'engie', 'eau', 'veolia', 'internet', 'orange', 'sfr', 'free', 'bouygues', 'facture'],
-        'Logement': ['loyer', 'credit', 'appartement', 'maison', 'assurance', 'habitation', 'charges'],
+        'Shopping': ['amazon', 'fnac', 'darty', 'galeries lafayette', 'printemps', 'zara', 'h&m', 'uniqlo', 'decathlon', 'vetement', 'achat', 'buisson','mathon', 'verbaudet'],
+        'Seconde Main': ['vinted', 'leboncoin'],
+        'Loisirs': ['cinema', 'film', 'theatre', 'billet', 'concert', 'netflix', 'deezer', 'abonnement', 'cubicle', 'steam', 'epic games',],
+        'Sante': ['pharmacie', 'medecin', 'docteur', 'medical', 'sante', 'dentiste', 'hopital', 'mutuelle', 'delignieres', 'pharma', 'dafniet', 'klouche', 'cadeau'],
+        'Services': ['electricite', 'edf', 'engie', 'eau', 'veolia', 'internet', 'orange', 'sfr', 'free', 'bouygues', 'facture', 'gimmick'],
+        'Logement': ['loyer', 'credit', 'appartement', 'maison', 'assurance', 'habitation', 'charges', 'immobilier'],
         'Revenus': ['salaire', 'virement', 'revenu', 'paiement recu', 'remboursement'],
-        'Virements': ['virement', 'retrait', 'depot', 'dab', 'guichet']
+        'Virements': ['virement', 'retrait', 'depot', 'dab', 'guichet'],
+        'Voiture': ['essence', 'carburant', 'parking', 'peage', 'autoroute', 'asf', 'bain de'],
+        'Banque': ['LCL', 'cotisation', 'assurance', 'CACI'],
+        'Maison': ['leroy']
     }
     
     # Try to match the description to a category
@@ -115,48 +120,68 @@ def get_balance_over_time(dfs, manual_balance=0):
     Returns:
         pandas.DataFrame: DataFrame with daily balance data
     """
-    if not dfs or all(df.empty for df in dfs):
+    try:
+        if not dfs or all(df.empty for df in dfs):
+            return pd.DataFrame(columns=['date', 'balance'])
+        
+        # Combine all dataframes
+        combined_df = pd.concat(dfs, ignore_index=True)
+        
+        if combined_df.empty:
+            return pd.DataFrame(columns=['date', 'balance'])
+        
+        # Sort transactions by date
+        combined_df = combined_df.sort_values('date')
+        
+        # Convert amount column to float type to ensure consistency
+        combined_df['amount'] = combined_df['amount'].astype(float)
+        
+        # If manual balance is provided, use it instead of calculating from the file
+        if manual_balance != 0:
+            try:
+                # Ensure data types are compatible for calculation
+                starting_balance = float(manual_balance) - float(combined_df['amount'].sum())
+            except (ValueError, TypeError) as e:
+                print(f"Error converting manual balance: {e}")
+                starting_balance = float(manual_balance)
+        else:
+            try:
+                # Get the starting balance from the first file
+                # This assumes the balance in the file represents the end balance after all transactions
+                # Ensure data types are compatible for calculation
+                starting_balance = float(dfs[0]['balance'].iloc[0]) - float(dfs[0]['amount'].sum())
+            except (ValueError, TypeError) as e:
+                print(f"Error calculating starting balance: {e}")
+                # Fallback to a default starting balance of 0
+                starting_balance = 0.0
+        
+        # Create a date range from the earliest to latest transaction
+        date_range = pd.date_range(
+            start=combined_df['date'].min(),
+            end=combined_df['date'].max(),
+            freq='D'
+        )
+        
+        # Create a DataFrame with the date range
+        balance_df = pd.DataFrame({'date': date_range})
+        
+        # Add the daily transactions to the DataFrame
+        daily_transactions = combined_df.groupby(combined_df['date'].dt.date)['amount'].sum().reset_index()
+        daily_transactions['date'] = pd.to_datetime(daily_transactions['date'])
+        daily_transactions['amount'] = daily_transactions['amount'].astype(float)
+        
+        # Merge the daily transactions with the date range
+        balance_df = pd.merge(balance_df, daily_transactions, on='date', how='left')
+        balance_df['amount'] = balance_df['amount'].fillna(0).astype(float)
+        
+        # Calculate the cumulative balance
+        balance_df['balance'] = starting_balance + balance_df['amount'].cumsum()
+        
+        return balance_df[['date', 'balance']]
+    except Exception as e:
+        print(f"Error in get_balance_over_time: {e}")
+        # Return an empty DataFrame if anything goes wrong
         return pd.DataFrame(columns=['date', 'balance'])
-    
-    # Combine all dataframes
-    combined_df = pd.concat(dfs, ignore_index=True)
-    
-    if combined_df.empty:
-        return pd.DataFrame(columns=['date', 'balance'])
-    
-    # Sort transactions by date
-    combined_df = combined_df.sort_values('date')
-    
-    # If manual balance is provided, use it instead of calculating from the file
-    if manual_balance != 0:
-        starting_balance = manual_balance - combined_df['amount'].sum()
-    else:
-        # Get the starting balance from the first file
-        # This assumes the balance in the file represents the end balance after all transactions
-        starting_balance = dfs[0]['balance'].iloc[0] - dfs[0]['amount'].sum()
-    
-    # Create a date range from the earliest to latest transaction
-    date_range = pd.date_range(
-        start=combined_df['date'].min(),
-        end=combined_df['date'].max(),
-        freq='D'
-    )
-    
-    # Create a DataFrame with the date range
-    balance_df = pd.DataFrame({'date': date_range})
-    
-    # Add the daily transactions to the DataFrame
-    daily_transactions = combined_df.groupby(combined_df['date'].dt.date)['amount'].sum().reset_index()
-    daily_transactions['date'] = pd.to_datetime(daily_transactions['date'])
-    
-    # Merge the daily transactions with the date range
-    balance_df = pd.merge(balance_df, daily_transactions, on='date', how='left')
-    balance_df['amount'] = balance_df['amount'].fillna(0)
-    
-    # Calculate the cumulative balance
-    balance_df['balance'] = starting_balance + balance_df['amount'].cumsum()
-    
-    return balance_df[['date', 'balance']]
 
 def get_spending_by_category(dfs):
     """
@@ -168,25 +193,36 @@ def get_spending_by_category(dfs):
     Returns:
         pandas.DataFrame: DataFrame with spending by category
     """
-    if not dfs or all(df.empty for df in dfs):
-        return pd.DataFrame(columns=['category', 'amount'])
-    
-    # Combine all dataframes
-    combined_df = pd.concat(dfs, ignore_index=True)
-    
-    if combined_df.empty:
-        return pd.DataFrame(columns=['category', 'amount'])
-    
-    # Filter for expenses (negative amounts)
-    expenses_df = combined_df[combined_df['amount'] < 0].copy()
-    
-    # Take the absolute value of the amount
-    expenses_df['amount'] = expenses_df['amount'].abs()
-    
-    # Group by category and sum the amounts
-    category_spending = expenses_df.groupby('category')['amount'].sum().reset_index()
-    
-    # Sort by amount in descending order
-    category_spending = category_spending.sort_values('amount', ascending=False)
-    
-    return category_spending 
+    try:
+        if not dfs or all(df.empty for df in dfs):
+            return pd.DataFrame(columns=['category', 'amount'])
+        
+        # Combine all dataframes
+        combined_df = pd.concat(dfs, ignore_index=True)
+        
+        if combined_df.empty:
+            return pd.DataFrame(columns=['category', 'amount'])
+        
+        # Convert amount to float to ensure consistency
+        combined_df['amount'] = combined_df['amount'].astype(float)
+        
+        # Filter for expenses (negative amounts)
+        expenses_df = combined_df[combined_df['amount'] < 0].copy()
+        
+        # Take the absolute value of the amount
+        expenses_df['amount'] = expenses_df['amount'].abs()
+        
+        # Group by category and sum the amounts
+        category_spending = expenses_df.groupby('category')['amount'].sum().reset_index()
+        
+        # Convert to float to ensure consistency
+        category_spending['amount'] = category_spending['amount'].astype(float)
+        
+        # Sort by amount in descending order
+        category_spending = category_spending.sort_values('amount', ascending=False)
+        
+        return category_spending
+    except Exception as e:
+        print(f"Error in get_spending_by_category: {e}")
+        # Return an empty DataFrame if anything goes wrong
+        return pd.DataFrame(columns=['category', 'amount']) 
