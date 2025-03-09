@@ -24,4 +24,4 @@ uv pip install -e .
 # Run the app
 echo "Starting the Budget Dashboard..."
 echo "Access it at http://127.0.0.1:8050/"
-python app.py 
+./run.py 
