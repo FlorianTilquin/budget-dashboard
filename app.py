@@ -51,7 +51,8 @@ app.layout = dbc.Container([
                             'textAlign': 'center',
                             'margin': '10px'
                         },
-                        multiple=True
+                        multiple=True,
+                        accept='.ofx,.ofc'
                     ),
                     html.Div(id='upload-output', className="mt-3"),
                     html.Div(id='parsed-files-list', className="mt-3")
