@@ -225,4 +225,90 @@ def get_spending_by_category(dfs):
     except Exception as e:
         print(f"Error in get_spending_by_category: {e}")
         # Return an empty DataFrame if anything goes wrong
-        return pd.DataFrame(columns=['category', 'amount']) 
+        return pd.DataFrame(columns=['category', 'amount'])
+
+def save_transactions_to_parquet(dfs, filepath):
+    """
+    Save transaction DataFrames to a parquet file.
+    
+    Args:
+        dfs (list): List of pandas DataFrames with transaction data
+        filepath (str): Path where to save the parquet file
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        if not dfs or all(df.empty for df in dfs):
+            print("No transactions to save")
+            return False
+        
+        # Combine all dataframes
+        combined_df = pd.concat(dfs, ignore_index=True)
+        
+        if combined_df.empty:
+            print("No transactions to save")
+            return False
+        
+        # Convert all numeric columns to float for consistency
+        for col in combined_df.select_dtypes(include=['number']).columns:
+            combined_df[col] = combined_df[col].astype(float)
+        
+        # Save to parquet
+        combined_df.to_parquet(filepath, index=False)
+        print(f"Saved {len(combined_df)} transactions to {filepath}")
+        return True
+    
+    except Exception as e:
+        print(f"Error saving transactions to parquet: {e}")
+        return False
+
+def load_transactions_from_parquet(contents, filename):
+    """
+    Load transaction data from a parquet file.
+    
+    Args:
+        contents (bytes): The contents of the parquet file
+        filename (str): The name of the file
+        
+    Returns:
+        pandas.DataFrame: DataFrame containing transaction data
+    """
+    try:
+        # Parse the parquet file
+        df = pd.read_parquet(BytesIO(contents))
+        
+        # Ensure required columns exist
+        required_columns = ['date', 'amount', 'description', 'category']
+        if not all(col in df.columns for col in required_columns):
+            missing = [col for col in required_columns if col not in df.columns]
+            print(f"Missing required columns in parquet file: {missing}")
+            return pd.DataFrame()
+        
+        # Convert date column to datetime if it's not
+        if not pd.api.types.is_datetime64_dtype(df['date']):
+            df['date'] = pd.to_datetime(df['date'])
+        
+        # Ensure amount is float
+        df['amount'] = df['amount'].astype(float)
+        
+        # Add balance column if missing (use 0 as placeholder)
+        if 'balance' not in df.columns:
+            df['balance'] = 0.0
+        
+        # Add account info if missing
+        if 'account_id' not in df.columns:
+            df['account_id'] = 'parquet-import'
+        
+        if 'account_type' not in df.columns:
+            df['account_type'] = 'checking'
+        
+        if 'currency' not in df.columns:
+            df['currency'] = 'EUR'
+        
+        print(f"Loaded {len(df)} transactions from {filename}")
+        return df
+    
+    except Exception as e:
+        print(f"Error loading parquet file: {e}")
+        return pd.DataFrame() 

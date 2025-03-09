@@ -4,4 +4,5 @@ plotly>=5.14.1
 pandas>=2.0.1
 ofxparse>=0.21
 numpy>=1.26.0
-python-dateutil>=2.8.2 
+python-dateutil>=2.8.2
+pyarrow>=14.0.1 

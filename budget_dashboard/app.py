@@ -8,9 +8,12 @@ import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta
 import uuid
+import os
+from tempfile import gettempdir
 
 # Import custom parser functions
 from budget_dashboard.parsers.ofx_parser import parse_ofx, parse_ofc, get_balance_over_time, get_spending_by_category
+from budget_dashboard.parsers.ofx_parser import save_transactions_to_parquet, load_transactions_from_parquet
 
 # Import the categories from ofx_parser
 from budget_dashboard.parsers.ofx_parser import categorize_transaction
@@ -35,6 +38,9 @@ def get_available_categories():
 
 # App layout
 app.layout = dbc.Container([
+    # Add store component to the main layout
+    dcc.Store(id='transaction-data-store'),
+    
     dbc.Row([
         dbc.Col([
             html.H1("Personal Budget Dashboard", className="text-center my-4"),
@@ -73,27 +79,62 @@ app.layout = dbc.Container([
             dbc.Card([
                 dbc.CardHeader("Upload Financial Data"),
                 dbc.CardBody([
-                    dcc.Upload(
-                        id='upload-data',
-                        children=html.Div([
-                            'Drag and Drop or ',
-                            html.A('Select Files')
+                    html.H5("Import Data", className="card-title"),
+                    dbc.Tabs([
+                        dbc.Tab(label="Bank Files (OFX/OFC)", children=[
+                            dcc.Upload(
+                                id='upload-data',
+                                children=html.Div([
+                                    'Drag and Drop or ',
+                                    html.A('Select OFX/OFC Files')
+                                ]),
+                                style={
+                                    'width': '100%',
+                                    'height': '60px',
+                                    'lineHeight': '60px',
+                                    'borderWidth': '1px',
+                                    'borderStyle': 'dashed',
+                                    'borderRadius': '5px',
+                                    'textAlign': 'center',
+                                    'margin': '10px'
+                                },
+                                multiple=True,
+                                accept='.ofx,.ofc'
+                            ),
                         ]),
-                        style={
-                            'width': '100%',
-                            'height': '60px',
-                            'lineHeight': '60px',
-                            'borderWidth': '1px',
-                            'borderStyle': 'dashed',
-                            'borderRadius': '5px',
-                            'textAlign': 'center',
-                            'margin': '10px'
-                        },
-                        multiple=True,
-                        accept='.ofx,.ofc'
-                    ),
+                        dbc.Tab(label="Parquet Files", children=[
+                            dcc.Upload(
+                                id='upload-parquet',
+                                children=html.Div([
+                                    'Drag and Drop or ',
+                                    html.A('Select Parquet Files')
+                                ]),
+                                style={
+                                    'width': '100%',
+                                    'height': '60px',
+                                    'lineHeight': '60px',
+                                    'borderWidth': '1px',
+                                    'borderStyle': 'dashed',
+                                    'borderRadius': '5px',
+                                    'textAlign': 'center',
+                                    'margin': '10px'
+                                },
+                                multiple=True,
+                                accept='.parquet'
+                            ),
+                        ]),
+                    ]),
                     html.Div(id='upload-output', className="mt-3"),
-                    html.Div(id='parsed-files-list', className="mt-3")
+                    html.Div(id='parsed-files-list', className="mt-3"),
+                    html.Hr(),
+                    html.H5("Export Data", className="card-title mt-3"),
+                    dbc.Button(
+                        "Save Transactions as Parquet",
+                        id="save-parquet-button",
+                        color="success",
+                        className="me-2"
+                    ),
+                    html.Div(id='save-parquet-output', className="mt-3")
                 ])
             ], className="mb-4")
         ], width=12)
@@ -197,11 +238,12 @@ app.layout = dbc.Container([
 
 # Callback to parse uploaded files
 @app.callback(
-    [Output('upload-output', 'children'),
-     Output('parsed-files-list', 'children')],
+    [Output('upload-output', 'children', allow_duplicate=True),
+     Output('parsed-files-list', 'children', allow_duplicate=True)],
     [Input('upload-data', 'contents')],
     [State('upload-data', 'filename'),
-     State('upload-data', 'last_modified')]
+     State('upload-data', 'last_modified')],
+    prevent_initial_call=True
 )
 def update_output(list_of_contents, list_of_names, list_of_dates):
     if list_of_contents is None:
@@ -249,6 +291,59 @@ def update_output(list_of_contents, list_of_names, list_of_dates):
         ])
     else:
         file_list = html.Div("No valid files were parsed.")
+    
+    return html.Div(upload_results), file_list
+
+# Callback to parse uploaded parquet files
+@app.callback(
+    [Output('upload-output', 'children', allow_duplicate=True),
+     Output('parsed-files-list', 'children', allow_duplicate=True)],
+    [Input('upload-parquet', 'contents')],
+    [State('upload-parquet', 'filename'),
+     State('upload-parquet', 'last_modified')],
+    prevent_initial_call=True
+)
+def update_output_parquet(list_of_contents, list_of_names, list_of_dates):
+    if list_of_contents is None:
+        return html.Div("No files uploaded yet."), html.Div()
+    
+    global transaction_dfs
+    
+    upload_results = []
+    new_dfs = []
+    
+    for content, name, date in zip(list_of_contents, list_of_names, list_of_dates):
+        try:
+            # Decode the content
+            content_type, content_string = content.split(',')
+            decoded = base64.b64decode(content_string)
+            
+            # Parse the file
+            if name.endswith('.parquet'):
+                df = load_transactions_from_parquet(decoded, name)
+                if not df.empty:
+                    new_dfs.append(df)
+                    upload_results.append(html.Div(f"✅ Successfully loaded {name} - {len(df)} transactions"))
+                else:
+                    upload_results.append(html.Div(f"❌ Error loading {name}", style={'color': 'red'}))
+            else:
+                upload_results.append(html.Div(f"❌ Unsupported file format: {name}", style={'color': 'red'}))
+        
+        except Exception as e:
+            upload_results.append(html.Div(f"❌ Error processing {name}: {str(e)}", style={'color': 'red'}))
+    
+    # Add new dataframes to existing ones
+    transaction_dfs.extend(new_dfs)
+    
+    # Show list of parsed files
+    if new_dfs:
+        total_transactions = sum(len(df) for df in new_dfs)
+        file_list = html.Div([
+            html.H5(f"Loaded {len(new_dfs)} parquet files with {total_transactions} transactions"),
+            html.Ul([html.Li(name) for name in list_of_names if name.endswith('.parquet')])
+        ])
+    else:
+        file_list = html.Div("No valid parquet files were loaded.")
     
     return html.Div(upload_results), file_list
 
@@ -502,7 +597,8 @@ def update_category_bar_chart(parsed_files, start_date, end_date):
 
 # Callback to update transactions table
 @app.callback(
-    Output('transactions-table', 'children'),
+    [Output('transactions-table', 'children'),
+     Output('transaction-data-store', 'data')],
     [Input('parsed-files-list', 'children'),
      Input('date-picker-range', 'start_date'),
      Input('date-picker-range', 'end_date')]
@@ -511,13 +607,13 @@ def update_transactions_table(parsed_files, start_date, end_date):
     global transaction_dfs
     
     if not transaction_dfs:
-        return html.Div("No transaction data available")
+        return html.Div("No transaction data available"), []
     
     # Combine all dataframes
     combined_df = pd.concat(transaction_dfs, ignore_index=True)
     
     if combined_df.empty:
-        return html.Div("No transaction data available")
+        return html.Div("No transaction data available"), []
     
     # Filter by date if needed
     if start_date and end_date:
@@ -581,19 +677,15 @@ def update_transactions_table(parsed_files, start_date, end_date):
         responsive=True
     )
     
-    # Add a store component to keep track of the original transaction data
-    store = dcc.Store(
-        id='transaction-data-store',
-        data=combined_df.to_dict('records')
-    )
-    
-    return html.Div([store, table])
+    # Return both the table and the data for the store
+    return table, combined_df.to_dict('records')
 
 # Callback to update transaction category
 @app.callback(
-    Output('transaction-data-store', 'data'),
+    Output('transaction-data-store', 'data', allow_duplicate=True),
     [Input({'type': 'category-dropdown', 'index': dash.dependencies.ALL}, 'value')],
-    [State('transaction-data-store', 'data')]
+    [State('transaction-data-store', 'data')],
+    prevent_initial_call=True  # Add this to prevent the callback from firing on initial load
 )
 def update_transaction_category(new_categories, data):
     # If there's no data, return
@@ -674,6 +766,45 @@ def refresh_charts(n_clicks, parsed_files, start_date, end_date):
     pie_chart = update_pie_chart(parsed_files, start_date, end_date)
     bar_chart = update_category_bar_chart(parsed_files, start_date, end_date)
     return pie_chart, bar_chart
+
+# Callback to save transactions to parquet
+@app.callback(
+    Output('save-parquet-output', 'children'),
+    [Input('save-parquet-button', 'n_clicks')],
+    prevent_initial_call=True
+)
+def save_transactions(n_clicks):
+    global transaction_dfs
+    
+    if not transaction_dfs:
+        return html.Div("No transactions to save.", style={'color': 'red'})
+    
+    try:
+        # Create a filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"transactions_{timestamp}.parquet"
+        
+        # Get downloads directory or use temp directory
+        downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+        if not os.path.exists(downloads_dir):
+            downloads_dir = gettempdir()
+        
+        filepath = os.path.join(downloads_dir, filename)
+        
+        # Save the transactions
+        success = save_transactions_to_parquet(transaction_dfs, filepath)
+        
+        if success:
+            return html.Div([
+                html.P(f"✅ Successfully saved transactions to:", className="mb-0"),
+                html.Code(filepath, className="ms-2"),
+                html.P("You can reload this file later using the Parquet Files tab.", className="mt-2 text-muted small")
+            ], className="text-success")
+        else:
+            return html.Div("❌ Failed to save transactions.", style={'color': 'red'})
+    
+    except Exception as e:
+        return html.Div(f"❌ Error saving transactions: {str(e)}", style={'color': 'red'})
 
 # Run the app
 if __name__ == '__main__':

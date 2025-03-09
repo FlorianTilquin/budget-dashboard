@@ -7,8 +7,9 @@ A comprehensive budget dashboard built with Python and Plotly Dash that helps yo
 - **File Upload**: Easily upload your bank's OFX or OFC files through the user interface
 - **Account Balance Visualization**: View your account balance trend over time
 - **Spending Categories**: Analyze where your money is going with pie charts and bar graphs
-- **Transaction History**: Browse through your transaction history with filtering capabilities
+- **Transaction Management**: Browse through your transaction history with filtering capabilities and manual category editing
 - **Time Period Selection**: Filter data by predefined periods or custom date ranges
+- **Data Persistence**: Save your transactions with custom categories as parquet files and reload them later
 
 ## Project Structure
 
@@ -21,7 +22,7 @@ budget-dashboard/
 │   ├── templates/           # HTML templates
 │   └── parsers/             # File parsers
 │       ├── __init__.py
-│       └── ofx_parser.py    # OFX/OFC file parser
+│       └── ofx_parser.py    # OFX/OFC and parquet file parser
 ├── run.py                   # Entry point script
 ├── setup.sh                 # Setup script
 ├── requirements.lock
@@ -129,23 +130,39 @@ OFX is a data-stream format for exchanging financial information. Many banks all
 ### OFC (Open Financial Connectivity)
 OFC is an older format similar to OFX, used by some financial institutions. The dashboard supports both formats.
 
-## Automatic Categorization
+### Parquet Files
+Parquet is a columnar storage format that is highly efficient for analytics workloads. The dashboard allows you to:
+- Save your transactions (including your manual category adjustments) as parquet files
+- Load these parquet files later, preserving all your customizations
+- Share your categorized transaction data across devices or with others
 
-The dashboard automatically categorizes your transactions based on common patterns in the transaction descriptions. The categories include:
+## Automatic and Manual Categorization
 
-- Groceries
-- Dining
-- Transportation
+The dashboard provides two ways to categorize your transactions:
+
+1. **Automatic Categorization**: Transactions are automatically categorized based on common patterns in the transaction descriptions.
+
+2. **Manual Categorization**: You can manually override the automatic categories using dropdown menus in the Transactions tab.
+
+The categories include:
+
+- Courses
+- Restaurants
+- Transport
 - Shopping
-- Entertainment
-- Health
-- Utilities
-- Housing
-- Income
-- Transfer
-- Other
+- Seconde Main
+- Loisirs
+- Sante
+- Services
+- Logement
+- Revenus
+- Virements
+- Voiture
+- Banque
+- Maison
+- Autre
 
-The categorization is not perfect but provides a good starting point for analyzing your spending patterns.
+After changing categories, click the "Refresh Charts" button to update the visualizations.
 
 ## Privacy & Security
 
