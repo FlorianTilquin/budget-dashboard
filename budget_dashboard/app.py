@@ -165,6 +165,17 @@ app.layout = dbc.Container([
                 dbc.Tab(label="Transactions", tab_id="tab-transactions", children=[
                     dbc.Card([
                         dbc.CardBody([
+                            # Add refresh button in the main layout
+                            html.Div([
+                                dbc.Button(
+                                    "Actualiser les graphiques",
+                                    id="refresh-button",
+                                    color="primary",
+                                    className="mb-3"
+                                ),
+                                html.P("Pour modifier la catégorie d'une transaction, sélectionnez-la dans le menu déroulant et cliquez sur le bouton ci-dessus.", 
+                                      className="text-muted mb-3")
+                            ]),
                             html.Div(id='transactions-table')
                         ])
                     ], className="mt-3")
@@ -526,14 +537,6 @@ def update_transactions_table(parsed_files, start_date, end_date):
     # Get all available categories
     categories = get_available_categories()
     
-    # Create a refresh button
-    refresh_button = dbc.Button(
-        "Actualiser les graphiques",
-        id="refresh-button",
-        color="primary",
-        className="mb-3"
-    )
-    
     # Create a custom table with dropdown menus for categories
     table_header = [
         html.Thead(html.Tr([
@@ -584,13 +587,7 @@ def update_transactions_table(parsed_files, start_date, end_date):
         data=combined_df.to_dict('records')
     )
     
-    # Add instruction text
-    instructions = html.Div([
-        html.P("Pour modifier la catégorie d'une transaction, sélectionnez-la dans le menu déroulant et cliquez sur le bouton 'Actualiser les graphiques'.", 
-              className="text-muted")
-    ])
-    
-    return html.Div([store, instructions, refresh_button, table])
+    return html.Div([store, table])
 
 # Callback to update transaction category
 @app.callback(
