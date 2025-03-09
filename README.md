@@ -16,7 +16,25 @@ A comprehensive budget dashboard built with Python and Plotly Dash that helps yo
 
 ## Installation
 
-### Prerequisites
+### Quick Setup
+
+For Unix/macOS users, you can use the provided setup script which will:
+1. Install uv if not already installed
+2. Create a virtual environment
+3. Install the dependencies
+4. Run the application
+
+```bash
+# Make the script executable if needed
+chmod +x setup.sh
+
+# Run the setup script
+./setup.sh
+```
+
+### Manual Setup
+
+#### Prerequisites
 
 This project uses `uv`, a fast Python package installer and resolver. If you don't have it installed:
 
@@ -28,7 +46,7 @@ pip install uv
 pipx install uv
 ```
 
-### Setting up the project
+#### Setting up the project
 
 1. Clone this repository:
    ```bash
