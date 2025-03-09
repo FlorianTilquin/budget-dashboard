@@ -7,9 +7,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta
+import uuid
 
 # Import custom parser functions
 from budget_dashboard.parsers.ofx_parser import parse_ofx, parse_ofc, get_balance_over_time, get_spending_by_category
+
+# Import the categories from ofx_parser
+from budget_dashboard.parsers.ofx_parser import categorize_transaction
 
 # Initialize the app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -18,6 +22,16 @@ app.title = "Personal Budget Dashboard"
 
 # Store for holding parsed data
 transaction_dfs = []
+
+# Helper function to get all available categories
+def get_available_categories():
+    # This list should match the categories in categorize_transaction
+    categories = [
+        'Courses', 'Restaurants', 'Transport', 'Shopping', 'Seconde Main', 
+        'Loisirs', 'Sante', 'Services', 'Logement', 'Revenus', 
+        'Virements', 'Voiture', 'Banque', 'Maison', 'Autre'
+    ]
+    return sorted(categories)
 
 # App layout
 app.layout = dbc.Container([
@@ -503,23 +517,165 @@ def update_transactions_table(parsed_files, start_date, end_date):
     # Sort by date
     combined_df = combined_df.sort_values('date', ascending=False)
     
-    # Format the date and amount columns
+    # Format the date column
     combined_df['date'] = combined_df['date'].dt.strftime('%Y-%m-%d')
-    combined_df['amount'] = combined_df['amount'].apply(lambda x: f"€{x:.2f}")
     
-    # Select only the columns we want to display
-    display_df = combined_df[['date', 'amount', 'description', 'category']]
+    # Add a unique ID for each transaction for callbacks
+    combined_df['id'] = [str(uuid.uuid4()) for _ in range(len(combined_df))]
     
-    # Create a table with the transactions
-    table = dbc.Table.from_dataframe(
-        display_df, 
-        striped=True, 
-        bordered=True, 
+    # Get all available categories
+    categories = get_available_categories()
+    
+    # Create a refresh button
+    refresh_button = dbc.Button(
+        "Actualiser les graphiques",
+        id="refresh-button",
+        color="primary",
+        className="mb-3"
+    )
+    
+    # Create a custom table with dropdown menus for categories
+    table_header = [
+        html.Thead(html.Tr([
+            html.Th("Date"), 
+            html.Th("Montant"), 
+            html.Th("Description"), 
+            html.Th("Catégorie")
+        ]))
+    ]
+    
+    rows = []
+    for i, row in combined_df.iterrows():
+        # Format amount with euro symbol
+        amount = f"€{float(row['amount']):.2f}" if isinstance(row['amount'], (int, float)) else row['amount']
+        
+        # Create a dropdown for the category with the current value selected
+        category_dropdown = dcc.Dropdown(
+            id={'type': 'category-dropdown', 'index': row['id']},
+            options=[{'label': cat, 'value': cat} for cat in categories],
+            value=row['category'],
+            clearable=False,
+            style={'width': '100%'}
+        )
+        
+        # Create a table row with the transaction data
+        tr = html.Tr([
+            html.Td(row['date']),
+            html.Td(amount),
+            html.Td(row['description']),
+            html.Td(category_dropdown)
+        ])
+        rows.append(tr)
+    
+    table_body = [html.Tbody(rows)]
+    
+    # Create the table
+    table = dbc.Table(
+        table_header + table_body,
+        striped=True,
+        bordered=True,
         hover=True,
         responsive=True
     )
     
-    return table
+    # Add a store component to keep track of the original transaction data
+    store = dcc.Store(
+        id='transaction-data-store',
+        data=combined_df.to_dict('records')
+    )
+    
+    # Add instruction text
+    instructions = html.Div([
+        html.P("Pour modifier la catégorie d'une transaction, sélectionnez-la dans le menu déroulant et cliquez sur le bouton 'Actualiser les graphiques'.", 
+              className="text-muted")
+    ])
+    
+    return html.Div([store, instructions, refresh_button, table])
+
+# Callback to update transaction category
+@app.callback(
+    Output('transaction-data-store', 'data'),
+    [Input({'type': 'category-dropdown', 'index': dash.dependencies.ALL}, 'value')],
+    [State('transaction-data-store', 'data')]
+)
+def update_transaction_category(new_categories, data):
+    # If there's no data, return
+    if not data or not new_categories:
+        return data
+    
+    # Create a context to know which dropdown triggered the callback
+    ctx = dash.callback_context
+    
+    # If the callback wasn't triggered by a dropdown, return
+    if not ctx.triggered:
+        return data
+    
+    # Get the ID of the dropdown that triggered the callback
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Parse the JSON string to get the index
+    try:
+        trigger_dict = eval(trigger_id)
+        transaction_id = trigger_dict['index']
+        
+        # Find the transaction in the data and update its category
+        for transaction in data:
+            if transaction['id'] == transaction_id:
+                # Find the index of the new category in the list of values
+                dropdown_index = [d['index'] for d in dash.callback_context.inputs_list[0]['id']]
+                new_category_index = dropdown_index.index(transaction_id)
+                
+                # Update the category
+                transaction['category'] = new_categories[new_category_index]
+                
+                # Also update the corresponding transaction in transaction_dfs
+                update_transaction_category_in_dfs(transaction_id, transaction['category'])
+                
+                break
+    except:
+        # If there's an error parsing the ID or finding the transaction,
+        # just return the unchanged data
+        pass
+    
+    return data
+
+def update_transaction_category_in_dfs(transaction_id, new_category):
+    """
+    Update the category of a transaction in the global transaction_dfs.
+    
+    Args:
+        transaction_id (str): The ID of the transaction to update
+        new_category (str): The new category value
+    """
+    global transaction_dfs
+    
+    # Iterate through each DataFrame in transaction_dfs
+    for i, df in enumerate(transaction_dfs):
+        # Check if the DataFrame has an 'id' column
+        if 'id' not in df.columns:
+            # Add an 'id' column if it doesn't exist
+            df['id'] = [str(uuid.uuid4()) for _ in range(len(df))]
+            transaction_dfs[i] = df
+        
+        # Try to find the transaction and update its category
+        if transaction_id in df['id'].values:
+            transaction_dfs[i].loc[df['id'] == transaction_id, 'category'] = new_category
+            break
+
+# Add a refresh callbacks to update the charts
+@app.callback(
+    [Output('pie-chart', 'figure'),
+     Output('category-bar-chart', 'figure')],
+    [Input('refresh-button', 'n_clicks'),
+     Input('parsed-files-list', 'children'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date')]
+)
+def refresh_charts(n_clicks, parsed_files, start_date, end_date):
+    # Just trigger both existing callbacks by returning their outputs
+    pie_chart = update_pie_chart(parsed_files, start_date, end_date)
+    bar_chart = update_category_bar_chart(parsed_files, start_date, end_date)
+    return pie_chart, bar_chart
 
 # Run the app
 if __name__ == '__main__':
