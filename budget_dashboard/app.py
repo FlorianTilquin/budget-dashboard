@@ -29,6 +29,30 @@ app.layout = dbc.Container([
         ], width=12)
     ]),
     
+    # Account Balance Input
+    dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Account Information"),
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Current Account Balance (€):"),
+                            dbc.Input(
+                                id='manual-balance-input',
+                                type='number',
+                                placeholder='Enter your current account balance',
+                                step=0.01,
+                                value=0,
+                            ),
+                            html.Small("Enter your most recent account balance in euros", className="text-muted")
+                        ], width=12)
+                    ])
+                ])
+            ], className="mb-4")
+        ], width=12)
+    ]),
+    
     # Upload area
     dbc.Row([
         dbc.Col([
@@ -234,27 +258,29 @@ def update_date_picker(preset):
     [Input('parsed-files-list', 'children'),
      Input('date-picker-range', 'start_date'),
      Input('date-picker-range', 'end_date'),
-     Input('time-period-preset', 'value')]
+     Input('time-period-preset', 'value'),
+     Input('manual-balance-input', 'value')]
 )
-def update_balance_chart(parsed_files, start_date, end_date, preset):
+def update_balance_chart(parsed_files, start_date, end_date, preset, manual_balance):
     global transaction_dfs
     
     if not transaction_dfs:
         return go.Figure().update_layout(
             title="No data available",
             xaxis_title="Date",
-            yaxis_title="Balance",
+            yaxis_title="Balance (€)",
             template="plotly_white"
         )
     
-    # Get balance over time
-    balance_df = get_balance_over_time(transaction_dfs)
+    # Get balance over time - using the manually entered balance if available
+    manual_balance = 0 if manual_balance is None else float(manual_balance)
+    balance_df = get_balance_over_time(transaction_dfs, manual_balance)
     
     if balance_df.empty:
         return go.Figure().update_layout(
             title="No data available",
             xaxis_title="Date",
-            yaxis_title="Balance",
+            yaxis_title="Balance (€)",
             template="plotly_white"
         )
     
@@ -270,7 +296,7 @@ def update_balance_chart(parsed_files, start_date, end_date, preset):
         x='date', 
         y='balance',
         title="Account Balance Over Time",
-        labels={'date': 'Date', 'balance': 'Balance'},
+        labels={'date': 'Date', 'balance': 'Balance (€)'},
         template="plotly_white"
     )
     
@@ -287,8 +313,16 @@ def update_balance_chart(parsed_files, start_date, end_date, preset):
             'yanchor': 'top'
         },
         xaxis_title="Date",
-        yaxis_title="Balance",
+        yaxis_title="Balance (€)",
         hovermode="x unified"
+    )
+    
+    # Format y-axis tick values with euro symbol
+    fig.update_layout(
+        yaxis=dict(
+            tickprefix="€",
+            tickformat=",."
+        )
     )
     
     return fig
@@ -360,6 +394,11 @@ def update_pie_chart(parsed_files, start_date, end_date):
         )
     )
     
+    # Add euro symbol to hover data
+    fig.update_traces(
+        hovertemplate='<b>%{label}</b><br>Amount: €%{value:.2f}<br>Percentage: %{percent}'
+    )
+    
     return fig
 
 # Callback to update category bar chart
@@ -406,7 +445,7 @@ def update_category_bar_chart(parsed_files, start_date, end_date):
         y='category', 
         x='amount',
         title="Spending by Category",
-        labels={'amount': 'Amount Spent', 'category': 'Category'},
+        labels={'amount': 'Amount Spent (€)', 'category': 'Category'},
         template="plotly_white",
         orientation='h',
         color='amount',
@@ -422,7 +461,16 @@ def update_category_bar_chart(parsed_files, start_date, end_date):
             'xanchor': 'center',
             'yanchor': 'top'
         },
-        yaxis={'categoryorder':'total ascending'}
+        yaxis={'categoryorder':'total ascending'},
+        xaxis=dict(
+            tickprefix="€",
+            tickformat=",."
+        )
+    )
+    
+    # Add Euro symbol to hover data
+    fig.update_traces(
+        hovertemplate='<b>%{y}</b><br>€%{x:.2f}'
     )
     
     return fig
@@ -457,7 +505,7 @@ def update_transactions_table(parsed_files, start_date, end_date):
     
     # Format the date and amount columns
     combined_df['date'] = combined_df['date'].dt.strftime('%Y-%m-%d')
-    combined_df['amount'] = combined_df['amount'].apply(lambda x: f"{x:.2f}")
+    combined_df['amount'] = combined_df['amount'].apply(lambda x: f"€{x:.2f}")
     
     # Select only the columns we want to display
     display_df = combined_df[['date', 'amount', 'description', 'category']]

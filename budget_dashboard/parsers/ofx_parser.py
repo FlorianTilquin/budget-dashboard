@@ -104,12 +104,13 @@ def categorize_transaction(description):
     # Default category
     return 'Autre'
 
-def get_balance_over_time(dfs):
+def get_balance_over_time(dfs, manual_balance=0):
     """
     Calculate the balance over time from a list of transaction DataFrames.
     
     Args:
         dfs (list): List of pandas DataFrames with transaction data
+        manual_balance (float): Manually entered current account balance
         
     Returns:
         pandas.DataFrame: DataFrame with daily balance data
@@ -126,9 +127,13 @@ def get_balance_over_time(dfs):
     # Sort transactions by date
     combined_df = combined_df.sort_values('date')
     
-    # Get the starting balance from the first file
-    # This assumes the balance in the file represents the end balance after all transactions
-    starting_balance = dfs[0]['balance'].iloc[0] - dfs[0]['amount'].sum()
+    # If manual balance is provided, use it instead of calculating from the file
+    if manual_balance != 0:
+        starting_balance = manual_balance - combined_df['amount'].sum()
+    else:
+        # Get the starting balance from the first file
+        # This assumes the balance in the file represents the end balance after all transactions
+        starting_balance = dfs[0]['balance'].iloc[0] - dfs[0]['amount'].sum()
     
     # Create a date range from the earliest to latest transaction
     date_range = pd.date_range(
