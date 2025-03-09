@@ -784,12 +784,9 @@ def save_transactions(n_clicks):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"transactions_{timestamp}.parquet"
         
-        # Get downloads directory or use temp directory
-        downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-        if not os.path.exists(downloads_dir):
-            downloads_dir = gettempdir()
-        
-        filepath = os.path.join(downloads_dir, filename)
+        # Save to app directory
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        filepath = os.path.join(app_dir, filename)
         
         # Save the transactions
         success = save_transactions_to_parquet(transaction_dfs, filepath)
