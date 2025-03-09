@@ -19,6 +19,8 @@ source .venv/bin/activate
 
 # Install dependencies
 echo "Installing dependencies..."
+# Ensure we reinstall to reflect any changes
+uv pip uninstall -y budget-dashboard || true
 uv pip install -e .
 
 # Run the app

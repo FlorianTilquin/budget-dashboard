@@ -9,7 +9,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # Import custom parser functions
-from ofx_parser import parse_ofx, parse_ofc, get_balance_over_time, get_spending_by_category
+from budget_dashboard.parsers.ofx_parser import parse_ofx, parse_ofc, get_balance_over_time, get_spending_by_category
 
 # Initialize the app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])

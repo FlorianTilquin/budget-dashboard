@@ -10,6 +10,25 @@ A comprehensive budget dashboard built with Python and Plotly Dash that helps yo
 - **Transaction History**: Browse through your transaction history with filtering capabilities
 - **Time Period Selection**: Filter data by predefined periods or custom date ranges
 
+## Project Structure
+
+```
+budget-dashboard/
+├── budget_dashboard/        # Main Python package
+│   ├── __init__.py
+│   ├── app.py               # Dash application
+│   ├── static/              # Static files (CSS, JS, images)
+│   ├── templates/           # HTML templates
+│   └── parsers/             # File parsers
+│       ├── __init__.py
+│       └── ofx_parser.py    # OFX/OFC file parser
+├── run.py                   # Entry point script
+├── setup.sh                 # Setup script
+├── requirements.lock
+├── pyproject.toml
+└── README.md
+```
+
 ## Screenshots
 
 (Screenshots of the dashboard will appear here once you run the application)
@@ -83,7 +102,12 @@ pipx install uv
 
 1. Run the dashboard:
    ```bash
-   python app.py
+   ./run.py
+   ```
+   
+   Or alternatively:
+   ```bash
+   python run.py
    ```
 
 2. Open your web browser and navigate to:
