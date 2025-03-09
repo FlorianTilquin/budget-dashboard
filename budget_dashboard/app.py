@@ -664,12 +664,13 @@ def update_transaction_category_in_dfs(transaction_id, new_category):
 
 # Add a refresh callbacks to update the charts
 @app.callback(
-    [Output('pie-chart', 'figure'),
-     Output('category-bar-chart', 'figure')],
+    [Output('pie-chart', 'figure', allow_duplicate=True),
+     Output('category-bar-chart', 'figure', allow_duplicate=True)],
     [Input('refresh-button', 'n_clicks'),
      Input('parsed-files-list', 'children'),
      Input('date-picker-range', 'start_date'),
-     Input('date-picker-range', 'end_date')]
+     Input('date-picker-range', 'end_date')],
+    prevent_initial_call=True  # Add this to prevent the callback from firing on initial load
 )
 def refresh_charts(n_clicks, parsed_files, start_date, end_date):
     # Just trigger both existing callbacks by returning their outputs
