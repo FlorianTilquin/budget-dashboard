@@ -83,22 +83,7 @@ def categorize_transaction(description):
     description = description.lower()
     
     # Define category patterns
-    categories = {
-        'Courses': ['carrefour', 'carreefour', 'lidl', 'aldi', 'monoprix', 'leclerc', 'intermarche', 'super u', 'casino', 'franprix', 'marche', 'epicerie', 'boulangerie', 'alimentation', 'picard'],
-        'Restaurants': ['restaurant', 'cafe', 'bar', 'bistrot', 'brasserie', 'uber eats', 'deliveroo', 'just eat', 'frichti', 'traiteur'],
-        'Transport': ['uber', 'taxi', 'transport', 'metro', 'ratp', 'sncf', 'bus', 'train', 'essence', 'carburant', 'parking', 'peage', 'autoroute'],
-        'Shopping': ['amazon', 'fnac', 'darty', 'galeries lafayette', 'printemps', 'zara', 'h&m', 'uniqlo', 'decathlon', 'vetement', 'achat', 'buisson','mathon', 'verbaudet'],
-        'Seconde Main': ['vinted', 'leboncoin'],
-        'Loisirs': ['cinema', 'film', 'theatre', 'billet', 'concert', 'netflix', 'deezer', 'abonnement', 'cubicle', 'steam', 'epic games',],
-        'Sante': ['pharmacie', 'medecin', 'docteur', 'medical', 'sante', 'dentiste', 'hopital', 'mutuelle', 'delignieres', 'pharma', 'dafniet', 'klouche', 'cadeau'],
-        'Services': ['electricite', 'edf', 'engie', 'eau', 'veolia', 'internet', 'orange', 'sfr', 'free', 'bouygues', 'facture', 'gimmick'],
-        'Logement': ['loyer', 'credit', 'appartement', 'maison', 'assurance', 'habitation', 'charges', 'immobilier'],
-        'Revenus': ['salaire', 'virement', 'revenu', 'paiement recu', 'remboursement'],
-        'Virements': ['virement', 'retrait', 'depot', 'dab', 'guichet'],
-        'Voiture': ['essence', 'carburant', 'parking', 'peage', 'autoroute', 'asf', 'bain de'],
-        'Banque': ['LCL', 'cotisation', 'assurance', 'CACI'],
-        'Maison': ['leroy']
-    }
+    categories = get_categories()
     
     # Try to match the description to a category
     for category, keywords in categories.items():
@@ -108,6 +93,31 @@ def categorize_transaction(description):
     
     # Default category
     return 'Autre'
+
+def get_categories():
+    """
+    Get the dictionary of categories and their keywords.
+    
+    Returns:
+        dict: Dictionary where keys are category names and values are lists of keywords
+    """
+    return {
+        'Courses': ['carrefour', 'carreefour', 'lidl', 'aldi', 'monoprix', 'leclerc', 'intermarche', 'super u', 'casino', 'franprix', 'marche', 'epicerie', 'boulangerie', 'alimentation', 'picard', 'douz'],
+        'Restaurants': ['restaurant', 'cafe', 'bar', 'bistrot', 'brasserie', 'uber eats', 'deliveroo', 'just eat', 'frichti', 'traiteur'],
+        'Transport': ['uber', 'taxi', 'transport', 'metro', 'ratp', 'sncf', 'bus', 'train', 'essence', 'carburant', 'parking', 'peage', 'autoroute'],
+        'Shopping': ['amazon', 'fnac', 'darty', 'galeries lafayette', 'printemps', 'zara', 'h&m', 'uniqlo', 'decathlon', 'vetement', 'achat', 'buisson','mathon', 'verbaudet'],
+        'Seconde Main': ['vinted', 'leboncoin'],
+        'Loisirs': ['cinema', 'film', 'theatre', 'billet', 'concert', 'netflix', 'deezer', 'abonnement', 'cubicle', 'steam', 'epic games', 'instant gaming'],
+        'Sante': ['pharmacie', 'medecin', 'docteur', 'medical', 'sante', 'dentiste', 'hopital', 'mutuelle', 'delignieres', 'pharma', 'dafniet', 'klouche', 'cadeau'],
+        'Services': ['electricite', 'edf', 'engie', 'eau', 'veolia', 'internet', 'orange', 'sfr', 'free', 'bouygues', 'facture', 'gimmick'],
+        'Logement': ['loyer', 'credit', 'appartement', 'maison', 'assurance', 'habitation', 'charges', 'immobilier'],
+        'Revenus': ['salaire', 'virement', 'revenu', 'paiement recu', 'remboursement'],
+        'Virements': ['virement', 'retrait', 'depot', 'dab', 'guichet'],
+        'Voiture': ['essence', 'carburant', 'parking', 'peage', 'autoroute', 'asf', 'bain de'],
+        'Banque': ['LCL', 'cotisation', 'assurance', 'CACI'],
+        'Maison': ['leroy', 'amenagement'],
+        'Ecole': ['montfort', 'r 35', 'ecole', 'school', 'cantine', 'scolarite', 'cours', 'education', 'garderie', 'universitaire', 'frais scolaires']
+    }
 
 def get_balance_over_time(dfs, manual_balance=0):
     """

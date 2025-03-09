@@ -16,7 +16,7 @@ from budget_dashboard.parsers.ofx_parser import parse_ofx, parse_ofc, get_balanc
 from budget_dashboard.parsers.ofx_parser import save_transactions_to_parquet, load_transactions_from_parquet
 
 # Import the categories from ofx_parser
-from budget_dashboard.parsers.ofx_parser import categorize_transaction
+from budget_dashboard.parsers.ofx_parser import categorize_transaction, get_categories
 
 # Initialize the app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -28,12 +28,11 @@ transaction_dfs = []
 
 # Helper function to get all available categories
 def get_available_categories():
-    # This list should match the categories in categorize_transaction
-    categories = [
-        'Courses', 'Restaurants', 'Transport', 'Shopping', 'Seconde Main', 
-        'Loisirs', 'Sante', 'Services', 'Logement', 'Revenus', 
-        'Virements', 'Voiture', 'Banque', 'Maison', 'Autre'
-    ]
+    # Get categories from ofx_parser.py to ensure consistency
+    categories = list(get_categories().keys())
+    # Add 'Autre' if it's not already in the list (it's the default category)
+    if 'Autre' not in categories:
+        categories.append('Autre')
     return sorted(categories)
 
 # App layout
@@ -512,16 +511,18 @@ def update_pie_chart(parsed_files, start_date, end_date):
             'font': {'size': 24}
         },
         legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.1,  # Moved up to make more room for the chart
-            xanchor="center",
-            x=0.5,
-            font=dict(size=14)
+            orientation="v",  # Vertical orientation
+            yanchor="middle",
+            y=0.5,  # Middle of the chart
+            xanchor="left",
+            x=1.05,  # Position to the right of the chart
+            font=dict(size=14),
+            bordercolor="Grey",
+            borderwidth=1
         ),
-        margin=dict(t=100, b=100, l=50, r=50),  # More margin for the larger chart
-        height=600,  # Increased height
-        width=800,   # Specified width
+        margin=dict(t=100, b=100, l=50, r=150),  # More right margin for the legend
+        height=600,  # Same height as bar chart
+        width=900,   # Slightly wider to accommodate legend
         template="plotly_white",
         showlegend=True
     )
@@ -606,7 +607,7 @@ def update_category_bar_chart(parsed_files, start_date, end_date):
             tickfont={'size': 14}
         ),
         margin=dict(t=100, b=50, l=150, r=50),  # More left margin for category labels
-        height=600,  # Increased height
+        height=600,  # More reasonable height
         width=800,   # Specified width
         template="plotly_white"
     )
