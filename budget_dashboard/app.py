@@ -485,38 +485,45 @@ def update_pie_chart(parsed_files, start_date, end_date):
             template="plotly_white"
         )
     
-    # Create the pie chart
-    fig = px.pie(
-        category_spending, 
-        values='amount', 
-        names='category',
-        title="Spending by Category",
-        template="plotly_white",
-        hole=0.4,
-        color_discrete_sequence=px.colors.qualitative.Set3
-    )
+    # Create the pie chart using graph_objects instead of plotly express
+    colors = px.colors.qualitative.Set3  # Still using the colors from plotly express
     
-    # Customize the layout
+    fig = go.Figure(data=[go.Pie(
+        labels=category_spending['category'],
+        values=category_spending['amount'],
+        hole=0.4,
+        marker=dict(
+            colors=colors[:len(category_spending)],
+            line=dict(color='white', width=2)
+        ),
+        textinfo='label+percent',
+        hoverinfo='label+value+percent',
+        hovertemplate='<b>%{label}</b><br>Amount: €%{value:.2f}<br>Percentage: %{percent}<extra></extra>'
+    )])
+    
+    # Customize the layout to make the chart larger
     fig.update_layout(
         title={
             'text': "Spending by Category",
-            'y':0.9,
+            'y':0.95,
             'x':0.5,
             'xanchor': 'center',
-            'yanchor': 'top'
+            'yanchor': 'top',
+            'font': {'size': 24}
         },
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.2,
+            y=-0.1,  # Moved up to make more room for the chart
             xanchor="center",
-            x=0.5
-        )
-    )
-    
-    # Add euro symbol to hover data
-    fig.update_traces(
-        hovertemplate='<b>%{label}</b><br>Amount: €%{value:.2f}<br>Percentage: %{percent}'
+            x=0.5,
+            font=dict(size=14)
+        ),
+        margin=dict(t=100, b=100, l=50, r=50),  # More margin for the larger chart
+        height=600,  # Increased height
+        width=800,   # Specified width
+        template="plotly_white",
+        showlegend=True
     )
     
     return fig
@@ -559,38 +566,49 @@ def update_category_bar_chart(parsed_files, start_date, end_date):
             template="plotly_white"
         )
     
-    # Create the bar chart
-    fig = px.bar(
-        category_spending, 
-        y='category', 
-        x='amount',
-        title="Spending by Category",
-        labels={'amount': 'Amount Spent (€)', 'category': 'Category'},
-        template="plotly_white",
-        orientation='h',
-        color='amount',
-        color_continuous_scale=px.colors.sequential.Viridis
-    )
+    # Sort categories by amount
+    category_spending = category_spending.sort_values('amount', ascending=True)
     
-    # Customize the layout
+    # Create the bar chart using graph_objects
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=category_spending['amount'],
+        y=category_spending['category'],
+        orientation='h',
+        marker=dict(
+            color=category_spending['amount'],
+            colorscale='Viridis',
+            line=dict(width=0)
+        ),
+        hovertemplate='<b>%{y}</b><br>€%{x:.2f}<extra></extra>'
+    ))
+    
+    # Customize the layout to make the chart larger
     fig.update_layout(
         title={
             'text': "Spending by Category",
-            'y':0.9,
+            'y':0.95,
             'x':0.5,
             'xanchor': 'center',
-            'yanchor': 'top'
+            'yanchor': 'top',
+            'font': {'size': 24}
         },
-        yaxis={'categoryorder':'total ascending'},
+        yaxis={
+            'categoryorder':'total ascending',
+            'title': 'Category',
+            'tickfont': {'size': 14}
+        },
         xaxis=dict(
+            title='Amount Spent (€)',
             tickprefix="€",
-            tickformat=",."
-        )
-    )
-    
-    # Add Euro symbol to hover data
-    fig.update_traces(
-        hovertemplate='<b>%{y}</b><br>€%{x:.2f}'
+            tickformat=",.",
+            tickfont={'size': 14}
+        ),
+        margin=dict(t=100, b=50, l=150, r=50),  # More left margin for category labels
+        height=600,  # Increased height
+        width=800,   # Specified width
+        template="plotly_white"
     )
     
     return fig
