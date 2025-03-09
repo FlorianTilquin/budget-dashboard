@@ -83,16 +83,16 @@ def categorize_transaction(description):
     
     # Define category patterns
     categories = {
-        'Groceries': ['grocery', 'supermarket', 'food', 'market', 'store', 'carrefour', 'lidl', 'aldi', 'monoprix'],
-        'Dining': ['restaurant', 'cafe', 'bar', 'coffee', 'dining', 'food delivery', 'uber eats', 'deliveroo'],
-        'Transportation': ['uber', 'lyft', 'taxi', 'transport', 'metro', 'bus', 'train', 'subway', 'fuel', 'gas', 'parking'],
-        'Shopping': ['amazon', 'shop', 'store', 'retail', 'clothing', 'purchase'],
-        'Entertainment': ['cinema', 'movie', 'theater', 'ticket', 'concert', 'netflix', 'spotify', 'subscription'],
-        'Health': ['pharmacy', 'doctor', 'medical', 'health', 'dental', 'hospital'],
-        'Utilities': ['electricity', 'water', 'gas', 'internet', 'phone', 'bill', 'utility'],
-        'Housing': ['rent', 'mortgage', 'apartment', 'house', 'insurance'],
-        'Income': ['salary', 'deposit', 'income', 'payment received'],
-        'Transfer': ['transfer', 'withdrawal', 'deposit', 'atm']
+        'Courses': ['carrefour', 'lidl', 'aldi', 'monoprix', 'leclerc', 'intermarche', 'super u', 'casino', 'franprix', 'marche', 'epicerie', 'boulangerie', 'alimentation'],
+        'Restaurants': ['restaurant', 'cafe', 'bar', 'bistrot', 'brasserie', 'uber eats', 'deliveroo', 'just eat', 'frichti', 'traiteur'],
+        'Transport': ['uber', 'taxi', 'transport', 'metro', 'ratp', 'sncf', 'bus', 'train', 'essence', 'carburant', 'parking', 'peage', 'autoroute'],
+        'Shopping': ['amazon', 'fnac', 'darty', 'galeries lafayette', 'printemps', 'zara', 'h&m', 'uniqlo', 'decathlon', 'vetement', 'achat'],
+        'Loisirs': ['cinema', 'film', 'theatre', 'billet', 'concert', 'netflix', 'spotify', 'deezy', 'canal+', 'abonnement'],
+        'Sante': ['pharmacie', 'medecin', 'docteur', 'medical', 'sante', 'dentiste', 'hopital', 'mutuelle'],
+        'Services': ['electricite', 'edf', 'engie', 'eau', 'veolia', 'internet', 'orange', 'sfr', 'free', 'bouygues', 'facture'],
+        'Logement': ['loyer', 'credit', 'appartement', 'maison', 'assurance', 'habitation', 'charges'],
+        'Revenus': ['salaire', 'virement', 'revenu', 'paiement recu', 'remboursement'],
+        'Virements': ['virement', 'retrait', 'depot', 'dab', 'guichet']
     }
     
     # Try to match the description to a category
@@ -102,7 +102,7 @@ def categorize_transaction(description):
                 return category
     
     # Default category
-    return 'Other'
+    return 'Autre'
 
 def get_balance_over_time(dfs):
     """
