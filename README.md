@@ -16,27 +16,55 @@ A comprehensive budget dashboard built with Python and Plotly Dash that helps yo
 
 ## Installation
 
+### Prerequisites
+
+This project uses `uv`, a fast Python package installer and resolver. If you don't have it installed:
+
+```bash
+# Install uv using pip
+pip install uv
+
+# Or install with pipx for isolated installation
+pipx install uv
+```
+
+### Setting up the project
+
 1. Clone this repository:
-   ```
+   ```bash
    git clone <repository-url>
    cd budget-dashboard
    ```
 
-2. Create a virtual environment (optional but recommended):
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+2. Create a virtual environment and install dependencies with uv:
+   ```bash
+   # Create a virtual environment
+   uv venv
+
+   # Activate the environment
+   # On Unix/macOS:
+   source .venv/bin/activate
+   # On Windows:
+   .venv\Scripts\activate
+
+   # Install dependencies
+   uv pip install -e .
    ```
 
-3. Install the required dependencies:
+   Or, to install in one step:
+   ```bash
+   uv pip sync
    ```
-   pip install -r requirements.txt
+
+3. For development, install development dependencies:
+   ```bash
+   uv pip install -e ".[dev]"
    ```
 
 ## Usage
 
 1. Run the dashboard:
-   ```
+   ```bash
    python app.py
    ```
 
